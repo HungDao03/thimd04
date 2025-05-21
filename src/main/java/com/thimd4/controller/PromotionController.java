@@ -4,12 +4,14 @@ import com.thimd4.model.Promotion;
 import com.thimd4.service.IPromotionService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.time.LocalDate;
 
 @Controller
 @RequestMapping("/promotions")
@@ -19,10 +21,14 @@ public class PromotionController {
     @Autowired
     private IPromotionService promotionService;
 
+    // 1. GET /promotions với param tìm kiếm (discount, start, end)
     @GetMapping
-    public String list(Model model) {
-        logger.info("Fetching all promotions");
-        model.addAttribute("promotions", promotionService.getAll());
+    public String list(@RequestParam(required = false) Double discount,
+                       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
+                       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end,
+                       Model model) {
+
+        model.addAttribute("promotions", promotionService.search(discount, start, end));
         return "list";
     }
 
@@ -68,12 +74,5 @@ public class PromotionController {
         logger.info("Deleting promotion with id: {}", id);
         promotionService.delete(id);
         return "redirect:/promotions";
-    }
-
-    @PostMapping("/search")
-    public String search(@RequestParam(required = false) Double discount, Model model) {
-        logger.info("Searching promotions with discount: {}", discount);
-        model.addAttribute("promotions", promotionService.search(discount));
-        return "list";
     }
 }

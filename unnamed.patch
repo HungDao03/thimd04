@@ -1,0 +1,290 @@
+Index: src/main/java/com/thimd4/controller/PromotionController.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/com/thimd4/controller/PromotionController.java b/src/main/java/com/thimd4/controller/PromotionController.java
+--- a/src/main/java/com/thimd4/controller/PromotionController.java	
++++ b/src/main/java/com/thimd4/controller/PromotionController.java	(date 1747798519615)
+@@ -2,7 +2,6 @@
+ 
+ import com.thimd4.model.Promotion;
+ import com.thimd4.service.IPromotionService;
+-
+ import jakarta.validation.Valid;
+ import org.springframework.beans.factory.annotation.Autowired;
+ import org.springframework.format.annotation.DateTimeFormat;
+@@ -10,50 +9,76 @@
+ import org.springframework.ui.Model;
+ import org.springframework.validation.BindingResult;
+ import org.springframework.web.bind.annotation.*;
+-
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
+ import java.time.LocalDate;
+ 
+ @Controller
+ @RequestMapping("/promotions")
+ public class PromotionController {
++    private static final Logger logger = LoggerFactory.getLogger(PromotionController.class);
++
+     @Autowired
+     private IPromotionService promotionService;
+ 
+     @GetMapping
+     public String list(Model model) {
++        logger.info("Fetching all promotions");
+         model.addAttribute("promotions", promotionService.getAll());
+         return "list";
+     }
+ 
+     @GetMapping("/create")
+     public String showCreateForm(Model model) {
++        logger.info("Showing create form");
+         model.addAttribute("promotion", new Promotion());
+         return "create";
+     }
+ 
++    @GetMapping("/edit/{id}")
++    public String showEditForm(@PathVariable Long id, Model model) {
++        logger.info("Showing edit form for promotion id: {}", id);
++        Promotion promotion = promotionService.findById(id);
++        if (promotion == null) {
++            logger.warn("Promotion not found with id: {}", id);
++            return "redirect:/promotions";
++        }
++        model.addAttribute("promotion", promotion);
++        return "edit";
++    }
++
+     @PostMapping("/save")
+-    public String save(@ModelAttribute("promotion") @Valid Promotion p, BindingResult result) {
+-        if (result.hasErrors()) return "create";
+-        if (p.getEndDate().isBefore(p.getStartDate().plusDays(1)))
++    public String save(@ModelAttribute("promotion") @Valid Promotion p, BindingResult result, Model model) {
++        logger.info("Saving promotion: {}", p);
++        if (result.hasErrors()) {
++            logger.warn("Validation errors: {}", result.getAllErrors());
++            return p.getId() != null ? "edit" : "create";
++        }
++        if (p.getEndDate().isBefore(p.getStartDate().plusDays(1))) {
+             result.rejectValue("endDate", null, "Ngày kết thúc phải sau ngày bắt đầu ít nhất 1 ngày.");
+-        if (result.hasErrors()) return "create";
+-
++        }
++        if (result.hasErrors()) {
++            logger.warn("Date validation error");
++            return p.getId() != null ? "edit" : "create";
++        }
+         promotionService.save(p);
+         return "redirect:/promotions";
+     }
+ 
+     @GetMapping("/delete/{id}")
+     public String delete(@PathVariable Long id) {
++        logger.info("Deleting promotion with id: {}", id);
+         promotionService.delete(id);
+         return "redirect:/promotions";
+     }
+ 
+-    @GetMapping("/search")
++    @PostMapping("/search")
+     public String search(@RequestParam(required = false) Double discount,
+                          @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
+                          @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end,
+                          Model model) {
++        logger.info("Searching promotions with discount: {}, start: {}, end: {}", discount, start, end);
+         model.addAttribute("promotions", promotionService.search(discount, start, end));
+         return "list";
+     }
+-}
++}
+\ No newline at end of file
+Index: src/main/resources/templates/edit.html
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/resources/templates/edit.html b/src/main/resources/templates/edit.html
+new file mode 100644
+--- /dev/null	(date 1747798295606)
++++ b/src/main/resources/templates/edit.html	(date 1747798295606)
+@@ -0,0 +1,44 @@
++<!DOCTYPE html>
++<html lang="vi" xmlns:th="http://www.thymeleaf.org">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Chỉnh Sửa Khuyến Mãi</title>
++  <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.3/css/bootstrap.min.css}">
++</head>
++<body>
++<div class="container mt-4">
++  <h1 class="mb-4">Chỉnh Sửa Khuyến Mãi</h1>
++  <form th:action="@{/promotions/save}" th:object="${promotion}" method="post">
++    <input type="hidden" th:field="*{id}">
++    <div class="mb-3">
++      <label for="title" class="form-label">Tiêu Đề</label>
++      <input type="text" class="form-control" id="title" th:field="*{title}" th:classappend="${#fields.hasErrors('title')} ? 'is-invalid'">
++      <div class="invalid-feedback" th:if="${#fields.hasErrors('title')}" th:errors="*{title}"></div>
++    </div>
++    <div class="mb-3">
++      <label for="startDate" class="form-label">Ngày Bắt Đầu</label>
++      <input type="date" class="form-control" id="startDate" th:field="*{startDate}" th:classappend="${#fields.hasErrors('startDate')} ? 'is-invalid'">
++      <div class="invalid-feedback" th:if="${#fields.hasErrors('startDate')}" th:errors="*{startDate}"></div>
++    </div>
++    <div class="mb-3">
++      <label for="endDate" class="form-label">Ngày Kết Thúc</label>
++      <input type="date" class="form-control" id="endDate" th:field="*{endDate}" th:classappend="${#fields.hasErrors('endDate')} ? 'is-invalid'">
++      <div class="invalid-feedback" th:if="${#fields.hasErrors('endDate')}" th:errors="*{endDate}"></div>
++    </div>
++    <div class="mb-3">
++      <label for="discount" class="form-label">Giảm Giá (VNĐ)</label>
++      <input type="number" class="form-control" id="discount" th:field="*{discount}" step="1000" min="10000" th:classappend="${#fields.hasErrors('discount')} ? 'is-invalid'">
++      <div class="invalid-feedback" th:if="${#fields.hasErrors('discount')}" th:errors="*{discount}"></div>
++    </div>
++    <div class="mb-3">
++      <label for="detail" class="form-label">Chi Tiết</label>
++      <textarea class="form-control" id="detail" th:field="*{detail}" rows="4"></textarea>
++    </div>
++    <button type="submit" class="btn btn-primary">Cập Nhật</button>
++    <a th:href="@{/promotions}" class="btn btn-secondary">Hủy</a>
++  </form>
++</div>
++<script th:src="@{/webjars/bootstrap/5.3.3/js/bootstrap.bundle.min.js}"></script>
++</body>
++</html>
+\ No newline at end of file
+Index: src/main/resources/templates/search.html
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/resources/templates/search.html b/src/main/resources/templates/search.html
+new file mode 100644
+--- /dev/null	(date 1747798295602)
++++ b/src/main/resources/templates/search.html	(date 1747798295602)
+@@ -0,0 +1,35 @@
++<!DOCTYPE html>
++<html lang="vi" xmlns:th="http://www.thymeleaf.org">
++<head>
++    <meta charset="UTF-8">
++    <meta name="viewport" content="width=device-width, initial-scale=1.0">
++    <title>Tìm Kiếm Khuyến Mãi</title>
++    <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.3/css/bootstrap.min.css}">
++</head>
++<body>
++<div class="container mt-4">
++    <h1 class="mb-4">Tìm Kiếm Khuyến Mãi</h1>
++    <form th:action="@{/promotions/search}" method="post" class="mb-4">
++        <div class="row g-3">
++            <div class="col-md-4">
++                <label for="discount" class="form-label">Giảm Giá (VNĐ)</label>
++                <input type="number" class="form-control" id="discount" name="discount" step="1000" min="10000">
++            </div>
++            <div class="col-md-4">
++                <label for="start" class="form-label">Ngày Bắt Đầu</label>
++                <input type="date" class="form-control" id="start" name="start">
++            </div>
++            <div class="col-md-4">
++                <label for="end" class="form-label">Ngày Kết Thúc</label>
++                <input type="date" class="form-control" id="end" name="end">
++            </div>
++            <div class="col-12 mt-3">
++                <button type="submit" class="btn btn-primary">Tìm Kiếm</button>
++                <a th:href="@{/promotions}" class="btn btn-secondary">Hủy</a>
++            </div>
++        </div>
++    </form>
++</div>
++<script th:src="@{/webjars/bootstrap/5.3.3/js/bootstrap.bundle.min.js}"></script>
++</body>
++</html>
+\ No newline at end of file
+Index: src/main/resources/templates/list.html
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/resources/templates/list.html b/src/main/resources/templates/list.html
+--- a/src/main/resources/templates/list.html	
++++ b/src/main/resources/templates/list.html	(date 1747798519608)
+@@ -9,19 +9,11 @@
+ <body>
+ <div class="container mt-4">
+     <h1 class="mb-4">Danh Sách Khuyến Mãi</h1>
+-    <form th:action="@{/promotions/search}" method="get" class="mb-4">
++    <form th:action="@{/promotions/search}" method="post" class="mb-4">
+         <div class="row g-3">
+             <div class="col-md-4">
+                 <label for="discount" class="form-label">Giảm Giá (VNĐ)</label>
+                 <input type="number" class="form-control" id="discount" name="discount" step="1000" min="10000">
+-            </div>
+-            <div class="col-md-4">
+-                <label for="start" class="form-label">Ngày Bắt Đầu</label>
+-                <input type="date" class="form-control" id="start" name="start">
+-            </div>
+-            <div class="col-md-4">
+-                <label for="end" class="form-label">Ngày Kết Thúc</label>
+-                <input type="date" class="form-control" id="end" name="end">
+             </div>
+             <div class="col-12 mt-3">
+                 <button type="submit" class="btn btn-primary">Tìm Kiếm</button>
+@@ -29,6 +21,9 @@
+             </div>
+         </div>
+     </form>
++    <div class="mb-4">
++        <a th:href="@{/promotions/create}" class="btn btn-success">Tạo Khuyến Mãi Mới</a>
++    </div>
+     <table class="table table-striped table-bordered">
+         <thead class="table-dark">
+         <tr>
+@@ -50,6 +45,7 @@
+             <td th:text="${promotion.discount}"></td>
+             <td th:text="${promotion.detail} ?: 'Không có'"></td>
+             <td>
++                <a th:href="@{/promotions/edit/{id}(id=${promotion.id})}" class="btn btn-warning btn-sm">Sửa</a>
+                 <a th:href="@{/promotions/delete/{id}(id=${promotion.id})}" class="btn btn-danger btn-sm" onclick="return confirm('Bạn có chắc muốn xóa khuyến mãi này?')">Xóa</a>
+             </td>
+         </tr>
+@@ -58,7 +54,6 @@
+         </tr>
+         </tbody>
+     </table>
+-    <a th:href="@{/promotions/create}" class="btn btn-success">Tạo Khuyến Mãi Mới</a>
+ </div>
+ <script th:src="@{/webjars/bootstrap/5.3.3/js/bootstrap.bundle.min.js}"></script>
+ </body>
+Index: src/main/resources/templates/create.html
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/resources/templates/create.html b/src/main/resources/templates/create.html
+--- a/src/main/resources/templates/create.html	
++++ b/src/main/resources/templates/create.html	(date 1747798295608)
+@@ -1,11 +1,13 @@
+ <!DOCTYPE html>
+-<html lang="vi" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: content}">
++<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+ <head>
+     <meta charset="UTF-8">
++    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+     <title>Tạo Khuyến Mãi</title>
++    <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.3/css/bootstrap.min.css}">
+ </head>
+ <body>
+-<div class="content">
++<div class="container mt-4">
+     <h1 class="mb-4">Tạo Khuyến Mãi</h1>
+     <form th:action="@{/promotions/save}" th:object="${promotion}" method="post">
+         <div class="mb-3">
+@@ -36,5 +38,6 @@
+         <a th:href="@{/promotions}" class="btn btn-secondary">Hủy</a>
+     </form>
+ </div>
++<script th:src="@{/webjars/bootstrap/5.3.3/js/bootstrap.bundle.min.js}"></script>
+ </body>
+ </html>
+\ No newline at end of file
