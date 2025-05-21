@@ -34,14 +34,13 @@ public class PromotionController {
 
     @GetMapping("/create")
     public String showCreateForm(Model model) {
-        logger.info("Showing create form");
+
         model.addAttribute("promotion", new Promotion());
         return "create";
     }
 
     @GetMapping("/edit/{id}")
     public String showEditForm(@PathVariable Long id, Model model) {
-        logger.info("Showing edit form for promotion id: {}", id);
         Promotion promotion = promotionService.findById(id);
         if (promotion == null) {
             logger.warn("Promotion not found with id: {}", id);
@@ -53,7 +52,6 @@ public class PromotionController {
 
     @PostMapping("/save")
     public String save(@ModelAttribute("promotion") @Valid Promotion p, BindingResult result, Model model) {
-        logger.info("Saving promotion: {}", p);
         if (result.hasErrors()) {
             logger.warn("Validation errors: {}", result.getAllErrors());
             return p.getId() != null ? "edit" : "create";
@@ -71,7 +69,6 @@ public class PromotionController {
 
     @GetMapping("/delete/{id}")
     public String delete(@PathVariable Long id) {
-        logger.info("Deleting promotion with id: {}", id);
         promotionService.delete(id);
         return "redirect:/promotions";
     }
